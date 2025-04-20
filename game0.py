@@ -1,7 +1,6 @@
 import numpy as np
 import logging
 from tqdm import tqdm
-from random import shuffle
 log = logging.getLogger(__name__)
 
 class Board():
@@ -21,14 +20,15 @@ class Board():
 
         self.n = n
         # Create the empty board array.
-        self.pieces = [[0] * 37 for _ in range(2)]
+        self.pieces = [None]*self.n
+        for i in range(self.n):
+            self.pieces[i] = [0]*self.n
 
-        paishan = [i for i in range(37)] * 4
-        shuffle(paishan)
-        for i in range(14):
-            pai = paishan[i]
-            assert(pai >= 0 and pai < 37)
-            self.pieces[0][pai] += 1
+        # Set up the initial 4 pieces.
+        self.pieces[int(self.n/2)-1][int(self.n/2)] = 1
+        self.pieces[int(self.n/2)][int(self.n/2)-1] = 1
+        self.pieces[int(self.n/2)-1][int(self.n/2)-1] = -1;
+        self.pieces[int(self.n/2)][int(self.n/2)] = -1;
 
     # add [][] indexer syntax to the Board
     def __getitem__(self, index): 
@@ -61,9 +61,13 @@ class Board():
         return list(moves)
 
     def has_legal_moves(self, color):
-        all = np.array([4] * 37)
-        cur = np.array(self.pieces[0]) + np.array(self.pieces[1])
-        return not np.array_equal(cur, all)
+        for y in range(self.n):
+            for x in range(self.n):
+                if self[x][y]==color:
+                    newmoves = self.get_moves_for_square((x,y))
+                    if len(newmoves)>0:
+                        return True
+        return False
 
     def get_moves_for_square(self, square):
         """Returns all the legal moves that use the given square as a base.
@@ -172,64 +176,70 @@ class OthelloGame():
 
     def getBoardSize(self):
         # (a,b) tuple
-        return (2, 37)
+        return (self.n, self.n)
 
     def getActionSize(self):
         # return number of actions
-        return 37
+        return self.n*self.n + 1
 
     def getNextState(self, board, player, action):
+        # if player takes action on board, return next (board,player)
+        # action must be a valid move
+        if action == self.n*self.n:
+            return (board, -player)
         b = Board(self.n)
         b.pieces = np.copy(board)
-
-        b.pieces[0][action] -= 1
-        b.pieces[1][action] += 1
-        
-        paishan = []
-        for pai in range(37):
-            remain = 4 - b.pieces[0][pai] - b.pieces[1][pai]
-            for _ in range(remain):
-                paishan.append(pai)
-        shuffle(paishan)
-        next = paishan[0]
-
-        b.pieces[0][next] += 1
-        return (b.pieces, player)
+        move = (int(action/self.n), action%self.n)
+        b.execute_move(move, player)
+        return (b.pieces, -player)
 
     def getValidMoves(self, board, player):
         # return a fixed size binary vector
+        valids = [0]*self.getActionSize()
         b = Board(self.n)
         b.pieces = np.copy(board)
-
-        valids = [0]*self.getActionSize()
-        for i in range(37):
-            if b[0][i] > 0:
-                valids[i] = 1
+        legalMoves =  b.get_legal_moves(player)
+        if len(legalMoves)==0:
+            valids[-1]=1
+            return np.array(valids)
+        for x, y in legalMoves:
+            valids[self.n*x+y]=1
         return np.array(valids)
 
     def getGameEnded(self, board, player):
         # return None if not ended, 1 if player won, -1 if player lost, 0 if draw.
         b = Board(self.n)
         b.pieces = np.copy(board)
-
-        win = 1
-        for i in range(37):
-            if b.pieces[0][i] in (0, 2, 4):
-                continue
-            else:
-                win = 0
-                break
-        if win:
-            return 1
-
         if b.has_legal_moves(player):
             return None
+        if b.has_legal_moves(-player):
+            return None
+        if b.countDiff(player) > 0:
+            return 1
+        elif b.countDiff(player) < 0:
+            return -1
         else:
             return 0
 
     def getCanonicalForm(self, board, player):
         # return state if player==1, else return -state if player==-1
         return player*board
+
+    def getSymmetries(self, board, pi):
+        # mirror, rotational
+        assert(len(pi) == self.n**2+1)  # 1 for pass
+        pi_board = np.reshape(pi[:-1], (self.n, self.n))
+        l = []
+
+        for i in range(1, 5):
+            for j in [True, False]:
+                newB = np.rot90(board, i)
+                newPi = np.rot90(pi_board, i)
+                if j:
+                    newB = np.fliplr(newB)
+                    newPi = np.fliplr(newPi)
+                l += [(newB, list(newPi.ravel()) + [pi[-1]])]
+        return l
 
     def stringRepresentation(self, board):
         return board.tostring()
@@ -245,11 +255,19 @@ class OthelloGame():
 
     @staticmethod
     def display(board):
-        print("-----------------------")
-        for i in range(37):
-            for j in range(board[0][i]):
-                print("[{}]".format(i), end="")
+        n = board.shape[0]
+        print("   ", end="")
+        for y in range(n):
+            print(y, end=" ")
         print("")
+        print("-----------------------")
+        for y in range(n):
+            print(y, "|", end="")
+            for x in range(n):
+                piece = board[y][x]
+                print(OthelloGame.square_content[piece], end=" ")
+            print("|")
+
         print("-----------------------")
 
 
@@ -290,17 +308,21 @@ class HumanOthelloPlayer():
         valid = self.game.getValidMoves(board, 1)
         for i in range(len(valid)):
             if valid[i]:
-                print("[{}]".format(i), end="")
+                print("[", int(i/self.game.n), int(i%self.game.n), end="] ")
         while True:
             input_move = input()
-            try:
-                x = int(input_move)
-                if ((0 <= x) and (x < 37)):
-                    a = x
-                    if valid[x]:
-                        break
-            except ValueError:
-                'Invalid integer'
+            input_a = input_move.split(" ")
+            if len(input_a) == 2:
+                try:
+                    x,y = [int(i) for i in input_a]
+                    if ((0 <= x) and (x < self.game.n) and (0 <= y) and (y < self.game.n)) or \
+                            ((x == self.game.n) and (y == 0)):
+                        a = self.game.n * x + y
+                        if valid[a]:
+                            break
+                except ValueError:
+                    'Invalid integer'
+            print('Invalid move')
         return a
 
 
@@ -375,6 +397,8 @@ class Arena():
             gameResult = self.playGame(verbose=verbose)
             if gameResult == 1:
                 oneWon += 1
+            elif gameResult == -1:
+                twoWon += 1
             else:
                 draws += 1
 
@@ -382,7 +406,9 @@ class Arena():
 
         for _ in tqdm(range(num), desc="Arena.playGames (player2 go first)"):
             gameResult = self.playGame(verbose=verbose)
-            if gameResult == 1:
+            if gameResult == -1:
+                oneWon += 1
+            elif gameResult == 1:
                 twoWon += 1
             else:
                 draws += 1
