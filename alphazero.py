@@ -33,7 +33,7 @@ class MCTS():
         self.Es = {}  # stores game.getGameEnded for board s
         self.Vs = {}  # stores game.getValidMoves for board s
 
-    def getActionProb(self, board, temp=1):
+    def getActionProb(self, numMCTSSims, board, temp=1):
         """
         This function performs numMCTSSims simulations of MCTS starting from
         canonicalBoard.
@@ -42,7 +42,7 @@ class MCTS():
             probs: a policy vector where the probability of the ith action is
                    proportional to Nsa[(s,a)]**(1./temp)
         """
-        for i in range(self.args.numMCTSSims):
+        for i in range(numMCTSSims):
             b = Board(board.n)
             b.pieces = copy.deepcopy(board.pieces)
             b.paishan = copy.deepcopy(board.paishan)
@@ -325,7 +325,7 @@ class SelfPlay():
             episodeStep += 1
             temp = int(episodeStep < self.args.tempThreshold)
             start = time.time()
-            pi = self.mcts.getActionProb(board, temp=temp)
+            pi = self.mcts.getActionProb(25, board, temp=temp)
             t1 = time.time()
             trainExamples.append([np.array(board.pieces), self.curPlayer, pi, None])
 
@@ -384,8 +384,8 @@ class SelfPlay():
             nmcts = MCTS(self.game, self.nnet, self.args)
 
             log.info('PITTING AGAINST PREVIOUS VERSION')
-            arena = Arena(lambda x: np.argmax(pmcts.getActionProb(x, temp=0)),
-                          lambda x: np.argmax(nmcts.getActionProb(x, temp=0)), self.game)
+            arena = Arena(lambda x: np.argmax(pmcts.getActionProb(2, x, temp=0)),
+                          lambda x: np.argmax(nmcts.getActionProb(2, x, temp=0)), self.game)
             pwins, nwins, draws = arena.playGames(self.args.arenaCompare)
 
             log.info('NEW/PREV WINS : %d / %d ; DRAWS : %d' % (nwins, pwins, draws))
@@ -410,18 +410,17 @@ args = dotdict({
     'cuda': torch.cuda.is_available(),
     'num_channels': 512,
 
-    'numIters': 100,
-    'numEps': 100,              # Number of complete self-play games to simulate during a new iteration.
+    'numIters': 500,
+    'numEps': 200,              # Number of complete self-play games to simulate during a new iteration.
     'tempThreshold': 15,        #
     'updateThreshold': 0.6,     # During arena playoff, new neural net will be accepted if threshold ratio or more of games are won.
     'maxlenOfQueue': 200000,    # Number of game examples to train the neural networks.
     'numItersForTrainExamplesHistory': 20,
-    'numMCTSSims': 25,          # Number of games moves for MCTS to simulate.
-    'arenaCompare': 40,         # Number of games to play during arena play to determine if new net will be accepted.
+    'arenaCompare': 500,         # Number of games to play during arena play to determine if new net will be accepted.
     'cpuct': 1,
 
     'checkpoint': './temp/',
-    'load_model': False,
+    'load_model': True,
     'load_folder_file': ('./temp/','best.pth.tar'),
     })
 
@@ -462,8 +461,8 @@ def main():
             elif name == 'alphazero':
                 nnet = NNetWrapper(g, args)
                 nnet.load_checkpoint(args.checkpoint, args.ckpt_file)
-                mcts = MCTS(g, nnet, dotdict({'numMCTSSims': 50, 'cpuct':1.0}))
-                return lambda x: np.argmax(mcts.getActionProb(x, temp=0))
+                mcts = MCTS(g, nnet, dotdict({'cpuct':1.0}))
+                return lambda x: np.argmax(mcts.getActionProb(2, x, temp=0))
             else:
                 raise ValueError('not support player name {}'.format(name))
         player1 = getPlayFunc(args.player1)
