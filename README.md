@@ -37,3 +37,13 @@ You can play with Alphazero too, please let me know if you can beat it:
 ```
 python alphazero.py --play --round=2 --player1=human --ckpt_file=iter106.pth.tar --verbose
 ```
+
+kvsir601@hotmail.com
+8!eD05gl
+
+qzlrtvs1801@hotmail.com
+hLE4OEI&
+
+o4xaix300@hotmail.com
+A8X8!g4l
+

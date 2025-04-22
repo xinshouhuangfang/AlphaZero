@@ -229,7 +229,7 @@ class OthelloGame():
 
     def getCanonicalForm(self, board, player):
         # return state if player==1, else return -state if player==-1
-        return player*board
+        return board
 
     def stringRepresentation(self, board):
         return board.tostring()

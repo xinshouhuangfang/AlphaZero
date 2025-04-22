@@ -320,20 +320,23 @@ class SelfPlay():
 
         while True:
             episodeStep += 1
-            canonicalBoard = self.game.getCanonicalForm(board, self.curPlayer)
             temp = int(episodeStep < self.args.tempThreshold)
-
-            pi = self.mcts.getActionProb(canonicalBoard, temp=temp)
-            trainExamples.append([canonicalBoard, self.curPlayer, pi, None])
+            start = time.time()
+            pi = self.mcts.getActionProb(board, temp=temp)
+            t1 = time.time()
+            trainExamples.append([board, self.curPlayer, pi, None])
 
             action = np.random.choice(len(pi), p=pi)
             board, self.curPlayer = self.game.getNextState(board, self.curPlayer, action)
+            t2 = time.time()
 
             r = self.game.getGameEnded(board, self.curPlayer)
+            t3 = time.time()
 
+            #print("{} {} {}", t1-start, t2-t1, t3-t2)
             if r is not None:
                 # r * (1 if self.curPlayer == x[1] else -1) means 1 for winner, -1 for loser, 0 for draw.
-                return [(x[0], x[2], r * (1 if self.curPlayer == x[1] else -1)) for x in trainExamples]
+                return [(x[0], x[2], r) for x in trainExamples]
 
     def learn(self):
         """
@@ -403,7 +406,7 @@ args = dotdict({
     'cuda': torch.cuda.is_available(),
     'num_channels': 512,
 
-    'numIters': 10,
+    'numIters': 100,
     'numEps': 100,              # Number of complete self-play games to simulate during a new iteration.
     'tempThreshold': 15,        #
     'updateThreshold': 0.6,     # During arena playoff, new neural net will be accepted if threshold ratio or more of games are won.
