@@ -21,179 +21,52 @@ class Board():
 
         self.n = n
         # Create the empty board array.
-        self.pieces = [[0] * 37 for _ in range(2)]
+        self.pieces = [[0] * self.n for _ in range(2)]
+        self.paishan = [i for i in range(self.n)] * 4
+        shuffle(self.paishan)
 
-        paishan = [i for i in range(37)] * 4
-        shuffle(paishan)
         for i in range(14):
-            pai = paishan[i]
-            assert(pai >= 0 and pai < 37)
+            pai = self.paishan[i]
+            assert(pai >= 0 and pai < self.n)
             self.pieces[0][pai] += 1
 
+        self.idx = 14
+
     # add [][] indexer syntax to the Board
-    def __getitem__(self, index): 
-        return self.pieces[index]
-
-    def countDiff(self, color):
-        """Counts the # pieces of the given color
-        (1 for white, -1 for black, 0 for empty spaces)"""
-        count = 0
-        for y in range(self.n):
-            for x in range(self.n):
-                if self[x][y]==color:
-                    count += 1
-                if self[x][y]==-color:
-                    count -= 1
-        return count
-
-    def get_legal_moves(self, color):
-        """Returns all the legal moves for the given color.
-        (1 for white, -1 for black)
-        """
-        moves = set()  # stores the legal moves.
-
-        # Get all the squares with pieces of the given color.
-        for y in range(self.n):
-            for x in range(self.n):
-                if self[x][y]==color:
-                    newmoves = self.get_moves_for_square((x,y))
-                    moves.update(newmoves)
-        return list(moves)
+    # def __getitem__(self, index):
+    #     return self.pieces[index]
 
     def has_legal_moves(self, color):
-        all = np.array([4] * 37)
-        cur = np.array(self.pieces[0]) + np.array(self.pieces[1])
-        return not np.array_equal(cur, all)
-
-    def get_moves_for_square(self, square):
-        """Returns all the legal moves that use the given square as a base.
-        That is, if the given square is (3,4) and it contains a black piece,
-        and (3,5) and (3,6) contain white pieces, and (3,7) is empty, one
-        of the returned moves is (3,7) because everything from there to (3,4)
-        is flipped.
-        """
-        (x,y) = square
-
-        # determine the color of the piece.
-        color = self[x][y]
-
-        # skip empty source squares.
-        if color==0:
-            return None
-
-        # search all possible directions.
-        moves = []
-        for direction in self.__directions:
-            move = self._discover_move(square, direction)
-            if move:
-                moves.append(move)
-
-        # return the generated move list
-        return moves
-
-    def execute_move(self, move, color):
-        """Perform the given move on the board; flips pieces as necessary.
-        color gives the color of the piece to play (1=white,-1=black)
-        """
-
-        #Much like move generation, start at the new piece's square and
-        #follow it on all 8 directions to look for a piece allowing flipping.
-
-        flips = [flip for direction in self.__directions
-                      for flip in self._get_flips(move, direction, color)]
-        assert len(list(flips))>0
-        for x, y in flips:
-            self[x][y] = color
-
-    def _discover_move(self, origin, direction):
-        """ Returns the endpoint for a legal move, starting at the given origin,
-        moving by the given increment."""
-        x, y = origin
-        color = self[x][y]
-        flips = []
-
-        for x, y in Board._increment_move(origin, direction, self.n):
-            if self[x][y] == 0:
-                if flips:
-                    return (x, y)
-                else:
-                    return None
-            elif self[x][y] == color:
-                return None
-            elif self[x][y] == -color:
-                flips.append((x, y))
-
-    def _get_flips(self, origin, direction, color):
-        """ Gets the list of flips for a vertex and direction to use with the
-        execute_move function """
-        #initialize variables
-        flips = [origin]
-
-        for x, y in Board._increment_move(origin, direction, self.n):
-            if self[x][y] == 0:
-                return []
-            if self[x][y] == -color:
-                flips.append((x, y))
-            elif self[x][y] == color and len(flips) > 0:
-                return flips
-
-        return []
-
-    @staticmethod
-    def _increment_move(move, direction, n):
-        """ Generator expression for incrementing moves """
-        move = list(map(sum, zip(move, direction)))
-        #move = (move[0]+direction[0], move[1]+direction[1])
-        while all(map(lambda x: 0 <= x < n, move)): 
-        #while 0<=move[0] and move[0]<n and 0<=move[1] and move[1]<n:
-            yield move
-            move=list(map(sum,zip(move,direction)))
-            #move = (move[0]+direction[0],move[1]+direction[1])
-
+        return self.idx < 4 * self.n
 
 class OthelloGame():
-    square_content = {
-        -1: "X",
-        +0: "-",
-        +1: "O"
-    }
-
     def __init__(self, n):
         self.n = n
 
     def getInitBoard(self):
-        # return initial board (numpy board)
         b = Board(self.n)
         return b
-        #return np.array(b.pieces)
 
     def getBoardSize(self):
         # (a,b) tuple
-        return (2, 37)
+        return (2, self.n)
 
     def getActionSize(self):
         # return number of actions
-        return 37
+        return self.n
 
     def getNextState(self, board, player, action):
         board.pieces[0][action] -= 1
         board.pieces[1][action] += 1
-        
-        paishan = []
-        for pai in range(37):
-            remain = 4 - board.pieces[0][pai] - board.pieces[1][pai]
-            for _ in range(remain):
-                paishan.append(pai)
-        shuffle(paishan)
-        next = paishan[0]
-
+        next = board.paishan[board.idx]
+        board.idx += 1
         board.pieces[0][next] += 1
         return (board, player)
 
     def getValidMoves(self, board, player):
         # return a fixed size binary vector
-        valids = [0] * 37
-        for i in range(37):
+        valids = [0] * self.n
+        for i in range(self.n):
             if board.pieces[0][i] > 0:
                 valids[i] = 1
         return np.array(valids)
@@ -203,7 +76,7 @@ class OthelloGame():
         b = board
 
         win = 1
-        for i in range(37):
+        for i in range(self.n):
             if b.pieces[0][i] in (0, 2, 4):
                 continue
             else:
@@ -223,8 +96,8 @@ class OthelloGame():
     @staticmethod
     def display(board):
         print("-----------------------")
-        for i in range(37):
-            for j in range(board[0][i]):
+        for i in range(len(board.pieces[0])):
+            for j in range(board.pieces[0][i]):
                 print("[{}]".format(i), end="")
         print("")
         print("-----------------------")
@@ -243,7 +116,7 @@ class HumanOthelloPlayer():
             input_move = input()
             try:
                 x = int(input_move)
-                if ((0 <= x) and (x < 37)):
+                if ((0 <= x) and (x < board.n)):
                     a = x
                     if valid[x]:
                         break

@@ -43,8 +43,10 @@ class MCTS():
                    proportional to Nsa[(s,a)]**(1./temp)
         """
         for i in range(self.args.numMCTSSims):
-            b = Board(37)
+            b = Board(board.n)
             b.pieces = copy.deepcopy(board.pieces)
+            b.paishan = copy.deepcopy(board.paishan)
+            b.idx = board.idx
             self.search(b)
 
         s = self.game.stringRepresentation(board)
@@ -419,7 +421,7 @@ args = dotdict({
     'cpuct': 1,
 
     'checkpoint': './temp/',
-    'load_model': True,
+    'load_model': False,
     'load_folder_file': ('./temp/','best.pth.tar'),
     })
 
@@ -427,7 +429,7 @@ def main():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--train', action="store_true")
-    parser.add_argument('--board_size', type=int, default=6)
+    parser.add_argument('--board_size', type=int, default=34)
     # play arguments
     parser.add_argument('--play', action="store_true")
     parser.add_argument('--verbose', action="store_true")
