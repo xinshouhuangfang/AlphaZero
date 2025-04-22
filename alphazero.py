@@ -1,18 +1,17 @@
-import logging
 import math
-import time
+import math
 import os
-import numpy as np
+import time
+from collections import deque
+import copy
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from tqdm import tqdm
-from collections import deque
-from pickle import Pickler, Unpickler
-from random import shuffle
 
 from game import *
+
 logging.basicConfig(level = logging.INFO)
 log = logging.getLogger(__name__)
 
@@ -34,7 +33,7 @@ class MCTS():
         self.Es = {}  # stores game.getGameEnded for board s
         self.Vs = {}  # stores game.getValidMoves for board s
 
-    def getActionProb(self, canonicalBoard, temp=1):
+    def getActionProb(self, board, temp=1):
         """
         This function performs numMCTSSims simulations of MCTS starting from
         canonicalBoard.
@@ -44,9 +43,11 @@ class MCTS():
                    proportional to Nsa[(s,a)]**(1./temp)
         """
         for i in range(self.args.numMCTSSims):
-            self.search(canonicalBoard)
+            b = Board(37)
+            b.pieces = copy.deepcopy(board.pieces)
+            self.search(b)
 
-        s = self.game.stringRepresentation(canonicalBoard)
+        s = self.game.stringRepresentation(board)
         counts = [self.Nsa[(s, a)] if (s, a) in self.Nsa else 0 for a in range(self.game.getActionSize())]
 
         if temp == 0:
@@ -61,7 +62,7 @@ class MCTS():
         probs = [x / counts_sum for x in counts]
         return probs
 
-    def search(self, canonicalBoard):
+    def search(self, board):
         """
         This function performs one iteration of MCTS. It is recursively called
         till a leaf node is found. The action chosen at each node is one that
@@ -80,18 +81,18 @@ class MCTS():
             v: the value of the current canonicalBoard
         """
 
-        s = self.game.stringRepresentation(canonicalBoard)
+        s = self.game.stringRepresentation(board)
 
         if s not in self.Es:
-            self.Es[s] = self.game.getGameEnded(canonicalBoard, 1)
+            self.Es[s] = self.game.getGameEnded(board, 1)
         if self.Es[s] is not None:
             # terminal node
             return self.Es[s]
 
         if s not in self.Ps:
             # leaf node
-            self.Ps[s], v = self.nnet.predict(canonicalBoard)
-            valids = self.game.getValidMoves(canonicalBoard, 1)
+            self.Ps[s], v = self.nnet.predict(board)
+            valids = self.game.getValidMoves(board, 1)
             self.Ps[s] = self.Ps[s] * valids  # masking invalid moves
             sum_Ps_s = np.sum(self.Ps[s])
             if sum_Ps_s > 0:
@@ -121,10 +122,9 @@ class MCTS():
                     best_act = a
 
         a = best_act
-        next_s, next_player = self.game.getNextState(canonicalBoard, 1, a)
-        next_s = self.game.getCanonicalForm(next_s, next_player)
+        next_s, next_player = self.game.getNextState(board, 1, a)
 
-        v = -self.search(next_s)
+        v = self.search(next_s)
 
         if (s, a) in self.Qsa:
             self.Qsa[(s, a)] = (self.Nsa[(s, a)] * self.Qsa[(s, a)] + v) / (self.Nsa[(s, a)] + 1)
@@ -250,6 +250,7 @@ class NNetWrapper():
         # start = time.time()
 
         # preparing input
+        board = np.array(board.pieces)
         board = torch.FloatTensor(board.astype(np.float32))
         if self.args.cuda: board = board.cuda()
         board = board.view(1, self.board_x, self.board_y)
@@ -324,7 +325,7 @@ class SelfPlay():
             start = time.time()
             pi = self.mcts.getActionProb(board, temp=temp)
             t1 = time.time()
-            trainExamples.append([board, self.curPlayer, pi, None])
+            trainExamples.append([np.array(board.pieces), self.curPlayer, pi, None])
 
             action = np.random.choice(len(pi), p=pi)
             board, self.curPlayer = self.game.getNextState(board, self.curPlayer, action)
@@ -358,7 +359,8 @@ class SelfPlay():
                 iterationTrainExamples += self.executeEpisode()
 
             # save the iteration examples to the history 
-            self.trainExamplesHistory.append(iterationTrainExamples)
+            # self.trainExamplesHistory.append(iterationTrainExamples)
+            self.trainExamplesHistory = [iterationTrainExamples]
 
             if len(self.trainExamplesHistory) > self.args.numItersForTrainExamplesHistory:
                 log.warning(
@@ -417,7 +419,7 @@ args = dotdict({
     'cpuct': 1,
 
     'checkpoint': './temp/',
-    'load_model': False,
+    'load_model': True,
     'load_folder_file': ('./temp/','best.pth.tar'),
     })
 
@@ -455,10 +457,6 @@ def main():
         def getPlayFunc(name):
             if name == 'human':
                 return HumanOthelloPlayer(g).play
-            elif name == 'random':
-                return RandomPlayer(g).play
-            elif name == 'greedy':
-                return GreedyOthelloPlayer(g).play
             elif name == 'alphazero':
                 nnet = NNetWrapper(g, args)
                 nnet.load_checkpoint(args.checkpoint, args.ckpt_file)

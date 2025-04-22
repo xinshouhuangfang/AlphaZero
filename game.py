@@ -158,17 +158,14 @@ class OthelloGame():
         +1: "O"
     }
 
-    @staticmethod
-    def getSquarePiece(piece):
-        return OthelloGame.square_content[piece]
-
     def __init__(self, n):
         self.n = n
 
     def getInitBoard(self):
         # return initial board (numpy board)
         b = Board(self.n)
-        return np.array(b.pieces)
+        return b
+        #return np.array(b.pieces)
 
     def getBoardSize(self):
         # (a,b) tuple
@@ -179,38 +176,31 @@ class OthelloGame():
         return 37
 
     def getNextState(self, board, player, action):
-        b = Board(self.n)
-        b.pieces = np.copy(board)
-
-        b.pieces[0][action] -= 1
-        b.pieces[1][action] += 1
+        board.pieces[0][action] -= 1
+        board.pieces[1][action] += 1
         
         paishan = []
         for pai in range(37):
-            remain = 4 - b.pieces[0][pai] - b.pieces[1][pai]
+            remain = 4 - board.pieces[0][pai] - board.pieces[1][pai]
             for _ in range(remain):
                 paishan.append(pai)
         shuffle(paishan)
         next = paishan[0]
 
-        b.pieces[0][next] += 1
-        return (b.pieces, player)
+        board.pieces[0][next] += 1
+        return (board, player)
 
     def getValidMoves(self, board, player):
         # return a fixed size binary vector
-        b = Board(self.n)
-        b.pieces = np.copy(board)
-
-        valids = [0]*self.getActionSize()
+        valids = [0] * 37
         for i in range(37):
-            if b[0][i] > 0:
+            if board.pieces[0][i] > 0:
                 valids[i] = 1
         return np.array(valids)
 
     def getGameEnded(self, board, player):
         # return None if not ended, 1 if player won, -1 if player lost, 0 if draw.
-        b = Board(self.n)
-        b.pieces = np.copy(board)
+        b = board
 
         win = 1
         for i in range(37):
@@ -227,21 +217,8 @@ class OthelloGame():
         else:
             return 0
 
-    def getCanonicalForm(self, board, player):
-        # return state if player==1, else return -state if player==-1
-        return board
-
     def stringRepresentation(self, board):
-        return board.tostring()
-
-    def stringRepresentationReadable(self, board):
-        board_s = "".join(self.square_content[square] for row in board for square in row)
-        return board_s
-
-    def getScore(self, board, player):
-        b = Board(self.n)
-        b.pieces = np.copy(board)
-        return b.countDiff(player)
+        return str(board.pieces)
 
     @staticmethod
     def display(board):
@@ -251,35 +228,6 @@ class OthelloGame():
                 print("[{}]".format(i), end="")
         print("")
         print("-----------------------")
-
-
-class RandomPlayer():
-    def __init__(self, game):
-        self.game = game
-
-    def play(self, board):
-        a = np.random.randint(self.game.getActionSize())
-        valids = self.game.getValidMoves(board, 1)
-        while valids[a]!=1:
-            a = np.random.randint(self.game.getActionSize())
-        return a
-
-class GreedyOthelloPlayer():
-    def __init__(self, game):
-        self.game = game
-
-    def play(self, board):
-        valids = self.game.getValidMoves(board, 1)
-        candidates = []
-        for a in range(self.game.getActionSize()):
-            if valids[a]==0:
-                continue
-            nextBoard, _ = self.game.getNextState(board, 1, a)
-            score = self.game.getScore(nextBoard, 1)
-            candidates += [(-score, a)]
-        candidates.sort()
-        return candidates[0][1]
-
 
 class HumanOthelloPlayer():
     def __init__(self, game):
@@ -340,9 +288,9 @@ class Arena():
                 assert self.display
                 print("Turn ", str(it), "Player ", str(curPlayer))
                 self.display(board)
-            action = players[curPlayer + 1](self.game.getCanonicalForm(board, curPlayer))
+            action = players[curPlayer + 1](board)
 
-            valids = self.game.getValidMoves(self.game.getCanonicalForm(board, curPlayer), 1)
+            valids = self.game.getValidMoves(board, 1)
 
             if valids[action] == 0:
                 log.error(f'Action {action} is not valid!')
