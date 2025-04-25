@@ -361,8 +361,7 @@ class SelfPlay():
                 iterationTrainExamples += self.executeEpisode()
 
             # save the iteration examples to the history 
-            # self.trainExamplesHistory.append(iterationTrainExamples)
-            self.trainExamplesHistory = [iterationTrainExamples]
+            self.trainExamplesHistory.append(iterationTrainExamples)
 
             if len(self.trainExamplesHistory) > self.args.numItersForTrainExamplesHistory:
                 log.warning(
@@ -411,7 +410,7 @@ args = dotdict({
     'num_channels': 512,
 
     'numIters': 500,
-    'numEps': 200,              # Number of complete self-play games to simulate during a new iteration.
+    'numEps': 100,              # Number of complete self-play games to simulate during a new iteration.
     'tempThreshold': 15,        #
     'updateThreshold': 0.6,     # During arena playoff, new neural net will be accepted if threshold ratio or more of games are won.
     'maxlenOfQueue': 200000,    # Number of game examples to train the neural networks.
