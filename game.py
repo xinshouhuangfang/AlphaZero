@@ -1,3 +1,5 @@
+import copy
+
 import numpy as np
 import logging
 from tqdm import tqdm
@@ -99,6 +101,17 @@ class OthelloGame():
         print("")
         print("-----------------------")
 
+class RandomPlayer():
+    def __init__(self, game):
+        self.game = game
+
+    def play(self, board):
+        a = np.random.randint(self.game.getActionSize())
+        valids = self.game.getValidMoves(board, 1)
+        while valids[a]!=1:
+            a = np.random.randint(self.game.getActionSize())
+        return a
+
 class HumanOthelloPlayer():
     def __init__(self, game):
         self.game = game
@@ -148,35 +161,69 @@ class Arena():
             either
                 winner: player who won the game (1 if player1, -1 if player2, 0 if draw)
         """
-        players = [self.player2, None, self.player1]
-        curPlayer = 1 # player1 go first
         board = self.game.getInitBoard()
+
+        b2 = Board(board.n)
+        b2.pieces = copy.deepcopy(board.pieces)
+        b2.paishan = copy.deepcopy(board.paishan)
+        b2.idx = board.idx
+
         it = 0
-        while self.game.getGameEnded(board, curPlayer) is None:
+        while self.game.getGameEnded(board, 1) is None:
             it += 1
-            if verbose:
-                assert self.display
-                print("Turn ", str(it), "Player ", str(curPlayer))
-                self.display(board)
-            action = players[curPlayer + 1](board)
-
-            if verbose:
-                print("  -->[{}]".format(action))
-
-
+            action = self.player1(board)
             valids = self.game.getValidMoves(board, 1)
-
-            if valids[action] == 0:
-                log.error(f'Action {action} is not valid!')
-                log.debug(f'valids = {valids}')
-                assert valids[action] > 0
-            board, curPlayer = self.game.getNextState(board, curPlayer, action)
-        result = curPlayer * self.game.getGameEnded(board, curPlayer)
+            assert valids[action] > 0
+            if verbose:
+                print("Turn ", str(it), "Player 1 ", end="")
+                for i in range(len(board.pieces[0])):
+                    for j in range(board.pieces[0][i]):
+                        print("[{}]".format(i), end="")
+                print("--->[{}]".format(action))
+                print("-----------------------")
+            board, curPlayer = self.game.getNextState(board, 1, action)
         if verbose:
-            assert self.display
-            print("Game over: Turn ", str(it), "Result ", str(result))
-            self.display(board)
-        return result
+            for i in range(len(board.pieces[0])):
+                for j in range(board.pieces[0][i]):
+                    print("[{}]".format(i), end="")
+            print("")
+        result1 = self.game.getGameEnded(board, 1)
+        it1 = it
+
+        board = b2
+        it = 0
+        while self.game.getGameEnded(board, 1) is None:
+            it += 1
+            action = self.player2(board)
+            valids = self.game.getValidMoves(board, 1)
+            assert valids[action] > 0
+            if verbose:
+                print("Turn ", str(it), "Player 2 ", end="")
+                for i in range(len(board.pieces[0])):
+                    for j in range(board.pieces[0][i]):
+                        print("[{}]".format(i), end="")
+                print("--->[{}]".format(action))
+                print("-----------------------")
+            board, curPlayer = self.game.getNextState(board, 1, action)
+        if verbose:
+            for i in range(len(board.pieces[0])):
+                for j in range(board.pieces[0][i]):
+                    print("[{}]".format(i), end="")
+            print("")
+        result2 = self.game.getGameEnded(board, 1)
+        it2 = it
+
+        if result1 == 1 and result2 == 0:
+            return 1
+        if result1 == 0 and result2 == 1:
+            return -1
+        if result1 == 0 and result2 == 0:
+            return 0
+        if it1 < it2:
+            return 1
+        if it1 > it2:
+            return -1
+        return 0
 
     def playGames(self, num, verbose=False):
         """
@@ -189,25 +236,16 @@ class Arena():
             draws:  games won by nobody
         """
 
-        num = int(num / 2)
         oneWon = 0
         twoWon = 0
         draws = 0
-        for _ in tqdm(range(num), desc="Arena.playGames (player1 go first)"):
+        for _ in tqdm(range(num), desc="Arena.playGames"):
             gameResult = self.playGame(verbose=verbose)
             if gameResult == 1:
                 oneWon += 1
-            else:
-                draws += 1
-
-        self.player1, self.player2 = self.player2, self.player1
-
-        for _ in tqdm(range(num), desc="Arena.playGames (player2 go first)"):
-            gameResult = self.playGame(verbose=verbose)
-            if gameResult == 1:
+            elif gameResult == -1:
                 twoWon += 1
             else:
                 draws += 1
 
         return oneWon, twoWon, draws
-

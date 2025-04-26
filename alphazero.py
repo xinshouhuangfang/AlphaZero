@@ -463,6 +463,8 @@ def main():
         def getPlayFunc(name):
             if name == 'human':
                 return HumanOthelloPlayer(g).play
+            elif name == 'random':
+                return RandomPlayer(g).play
             elif name == 'alphazero':
                 nnet = NNetWrapper(g, args)
                 nnet.load_checkpoint(args.checkpoint, args.ckpt_file)
