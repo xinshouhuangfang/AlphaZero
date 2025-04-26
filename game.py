@@ -13,9 +13,6 @@ class Board():
     1=white, -1=black, 0=empty
     '''
 
-    # list of all 8 directions on the board, as (x,y) offsets
-    __directions = [(1,1),(1,0),(1,-1),(0,-1),(-1,-1),(-1,0),(-1,1),(0,1)]
-
     def __init__(self, n):
         "Set up initial board configuration."
 
@@ -162,6 +159,10 @@ class Arena():
                 print("Turn ", str(it), "Player ", str(curPlayer))
                 self.display(board)
             action = players[curPlayer + 1](board)
+
+            if verbose:
+                print("  -->[{}]".format(action))
+
 
             valids = self.game.getValidMoves(board, 1)
 

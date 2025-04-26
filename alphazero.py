@@ -325,7 +325,7 @@ class SelfPlay():
             episodeStep += 1
             temp = int(episodeStep < self.args.tempThreshold)
             start = time.time()
-            pi = self.mcts.getActionProb(25, board, temp=temp)
+            pi = self.mcts.getActionProb(5, board, temp=temp)
             t1 = time.time()
             trainExamples.append([np.array(board.pieces), self.curPlayer, pi, None])
 
@@ -383,8 +383,8 @@ class SelfPlay():
             nmcts = MCTS(self.game, self.nnet, self.args)
 
             log.info('PITTING AGAINST PREVIOUS VERSION')
-            arena = Arena(lambda x: np.argmax(pmcts.getActionProb(2, x, temp=0)),
-                          lambda x: np.argmax(nmcts.getActionProb(2, x, temp=0)), self.game)
+            arena = Arena(lambda b: aplay(self.pnet, self.game, b),
+                          lambda b: aplay(self.nnet, self.game, b), self.game)
             pwins, nwins, draws = arena.playGames(self.args.arenaCompare)
 
             log.info('NEW/PREV WINS : %d / %d ; DRAWS : %d' % (nwins, pwins, draws))
@@ -409,7 +409,7 @@ args = dotdict({
     'cuda': torch.cuda.is_available(),
     'num_channels': 512,
 
-    'numIters': 500,
+    'numIters': 1,
     'numEps': 100,              # Number of complete self-play games to simulate during a new iteration.
     'tempThreshold': 15,        #
     'updateThreshold': 0.6,     # During arena playoff, new neural net will be accepted if threshold ratio or more of games are won.
@@ -422,6 +422,12 @@ args = dotdict({
     'load_model': True,
     'load_folder_file': ('./temp/','best.pth.tar'),
     })
+
+def aplay(nnet, game, board):
+    pi, v = nnet.predict(board)
+    valids = game.getValidMoves(board, 1)
+    pi = pi * valids # masking invalid moves
+    return np.argmax(pi)
 
 def main():
     import argparse
@@ -460,8 +466,7 @@ def main():
             elif name == 'alphazero':
                 nnet = NNetWrapper(g, args)
                 nnet.load_checkpoint(args.checkpoint, args.ckpt_file)
-                mcts = MCTS(g, nnet, dotdict({'cpuct':1.0}))
-                return lambda x: np.argmax(mcts.getActionProb(2, x, temp=0))
+                return lambda b: aplay(nnet, g, b)
             else:
                 raise ValueError('not support player name {}'.format(name))
         player1 = getPlayFunc(args.player1)
