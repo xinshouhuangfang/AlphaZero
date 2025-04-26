@@ -325,7 +325,7 @@ class SelfPlay():
             episodeStep += 1
             temp = int(episodeStep < self.args.tempThreshold)
             start = time.time()
-            pi = self.mcts.getActionProb(5, board, temp=temp)
+            pi = self.mcts.getActionProb(4, board, temp=temp)
             t1 = time.time()
             trainExamples.append([np.array(board.pieces), self.curPlayer, pi, None])
 
@@ -410,7 +410,7 @@ args = dotdict({
     'num_channels': 512,
 
     'numIters': 1,
-    'numEps': 100,              # Number of complete self-play games to simulate during a new iteration.
+    'numEps': 700,              # Number of complete self-play games to simulate during a new iteration.
     'tempThreshold': 15,        #
     'updateThreshold': 0.6,     # During arena playoff, new neural net will be accepted if threshold ratio or more of games are won.
     'maxlenOfQueue': 200000,    # Number of game examples to train the neural networks.
