@@ -391,6 +391,7 @@ class SelfPlay():
             if pwins + nwins == 0 or float(nwins) / (pwins + nwins) < self.args.updateThreshold:
                 log.info('REJECTING NEW MODEL')
                 self.nnet.load_checkpoint(folder=self.args.checkpoint, filename='temp.pth.tar')
+                self.args.numEps += 100
             else:
                 log.info('ACCEPTING NEW MODEL')
                 self.nnet.save_checkpoint(folder=self.args.checkpoint, filename='best.pth.tar')
@@ -409,12 +410,12 @@ args = dotdict({
     'cuda': torch.cuda.is_available(),
     'num_channels': 512,
 
-    'numIters': 1,
-    'numEps': 700,              # Number of complete self-play games to simulate during a new iteration.
+    'numIters': 500,
+    'numEps': 100,              # Number of complete self-play games to simulate during a new iteration.
     'tempThreshold': 15,        #
     'updateThreshold': 0.6,     # During arena playoff, new neural net will be accepted if threshold ratio or more of games are won.
     'maxlenOfQueue': 200000,    # Number of game examples to train the neural networks.
-    'numItersForTrainExamplesHistory': 20,
+    'numItersForTrainExamplesHistory': 1,
     'arenaCompare': 500,         # Number of games to play during arena play to determine if new net will be accepted.
     'cpuct': 1,
 
