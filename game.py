@@ -112,6 +112,17 @@ class RandomPlayer():
             a = np.random.randint(self.game.getActionSize())
         return a
 
+class GreedyOthelloPlayer():
+    def __init__(self, game):
+        self.game = game
+
+    def play(self, board):
+        for i in range(board.n):
+            if board.pieces[0][i] in (0, 2, 4):
+                continue
+            return i
+        return 0
+
 class HumanOthelloPlayer():
     def __init__(self, game):
         self.game = game

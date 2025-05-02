@@ -466,6 +466,8 @@ def main():
                 return HumanOthelloPlayer(g).play
             elif name == 'random':
                 return RandomPlayer(g).play
+            elif name == 'greedy':
+                return GreedyOthelloPlayer(g).play
             elif name == 'alphazero':
                 nnet = NNetWrapper(g, args)
                 nnet.load_checkpoint(args.checkpoint, args.ckpt_file)
