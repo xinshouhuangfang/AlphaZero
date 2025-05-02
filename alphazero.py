@@ -86,7 +86,7 @@ class MCTS():
         s = self.game.stringRepresentation(board)
 
         if s not in self.Es:
-            self.Es[s] = self.game.getGameEnded(board, 1)
+            self.Es[s] = self.game.getGameEnded(board)
         if self.Es[s] is not None:
             # terminal node
             return self.Es[s]
@@ -333,7 +333,7 @@ class SelfPlay():
             board, self.curPlayer = self.game.getNextState(board, self.curPlayer, action)
             t2 = time.time()
 
-            r = self.game.getGameEnded(board, self.curPlayer)
+            r = self.game.getGameEnded(board)
             t3 = time.time()
 
             #print("{} {} {}", t1-start, t2-t1, t3-t2)
@@ -411,7 +411,7 @@ args = dotdict({
     'num_channels': 512,
 
     'numIters': 500,
-    'numEps': 100,              # Number of complete self-play games to simulate during a new iteration.
+    'numEps': 10,              # Number of complete self-play games to simulate during a new iteration.
     'tempThreshold': 15,        #
     'updateThreshold': 0.6,     # During arena playoff, new neural net will be accepted if threshold ratio or more of games are won.
     'maxlenOfQueue': 200000,    # Number of game examples to train the neural networks.

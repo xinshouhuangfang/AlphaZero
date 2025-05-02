@@ -35,7 +35,7 @@ class Board():
     # def __getitem__(self, index):
     #     return self.pieces[index]
 
-    def has_legal_moves(self, color):
+    def has_legal_moves(self):
         return self.idx < 4 * self.n
 
 class OthelloGame():
@@ -70,7 +70,7 @@ class OthelloGame():
                 valids[i] = 1
         return np.array(valids)
 
-    def getGameEnded(self, board, player):
+    def getGameEnded(self, board):
         # return None if not ended, 1 if player won, -1 if player lost, 0 if draw.
         b = board
 
@@ -84,7 +84,7 @@ class OthelloGame():
         if win:
             return 1
 
-        if b.has_legal_moves(player):
+        if b.has_legal_moves():
             return None
         else:
             return 0
@@ -180,7 +180,7 @@ class Arena():
         b2.idx = board.idx
 
         it = 0
-        while self.game.getGameEnded(board, 1) is None:
+        while self.game.getGameEnded(board) is None:
             it += 1
             action = self.player1(board)
             valids = self.game.getValidMoves(board, 1)
@@ -198,12 +198,12 @@ class Arena():
                 for j in range(board.pieces[0][i]):
                     print("[{}]".format(i), end="")
             print("")
-        result1 = self.game.getGameEnded(board, 1)
+        result1 = self.game.getGameEnded(board)
         it1 = it
 
         board = b2
         it = 0
-        while self.game.getGameEnded(board, 1) is None:
+        while self.game.getGameEnded(board) is None:
             it += 1
             action = self.player2(board)
             valids = self.game.getValidMoves(board, 1)
@@ -221,7 +221,7 @@ class Arena():
                 for j in range(board.pieces[0][i]):
                     print("[{}]".format(i), end="")
             print("")
-        result2 = self.game.getGameEnded(board, 1)
+        result2 = self.game.getGameEnded(board)
         it2 = it
 
         if result1 == 1 and result2 == 0:
